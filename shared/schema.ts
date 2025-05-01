@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email"),
+  role: text("role").default("learner").notNull(), // 'learner', 'curator', 'admin'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -344,3 +345,59 @@ export const postLikesRelations = relations(postLikes, ({ one }) => ({
 export const insertPostLikeSchema = createInsertSchema(postLikes);
 export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
 export type PostLike = typeof postLikes.$inferSelect;
+
+// Learning Resources Table
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // video, article, quiz, file, etc.
+  contentType: text("content_type"), // MIME type for files
+  content: text("content"), // HTML content for articles, quiz JSON, etc.
+  url: text("url"), // External URL for videos, articles
+  fileName: text("file_name"), // For uploaded files
+  filePath: text("file_path"), // For uploaded files
+  fileSize: integer("file_size"), // In bytes
+  creatorId: integer("creator_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isPublic: boolean("is_public").default(true).notNull(),
+  tags: json("tags").default([]),
+});
+
+export const resourcesRelations = relations(resources, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [resources.creatorId],
+    references: [users.id],
+  }),
+  lessonResources: many(lessonResources),
+}));
+
+export const insertResourceSchema = createInsertSchema(resources);
+export type InsertResource = z.infer<typeof insertResourceSchema>;
+export type Resource = typeof resources.$inferSelect;
+
+// Lesson Resources Linking Table (Many-to-Many)
+export const lessonResources = pgTable("lesson_resources", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id").references(() => lessons.id).notNull(),
+  resourceId: integer("resource_id").references(() => resources.id).notNull(),
+  isPrimary: boolean("is_primary").default(false), // Is this the main resource for the lesson
+  order: integer("order").default(0), // Display order in the lesson
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const lessonResourcesRelations = relations(lessonResources, ({ one }) => ({
+  lesson: one(lessons, {
+    fields: [lessonResources.lessonId],
+    references: [lessons.id],
+  }),
+  resource: one(resources, {
+    fields: [lessonResources.resourceId],
+    references: [resources.id],
+  }),
+}));
+
+export const insertLessonResourceSchema = createInsertSchema(lessonResources);
+export type InsertLessonResource = z.infer<typeof insertLessonResourceSchema>;
+export type LessonResource = typeof lessonResources.$inferSelect;

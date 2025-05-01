@@ -40,6 +40,8 @@ export interface IStorage {
   getUser(id: number): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsersByRole(role: string): Promise<User[]>;
+  updateUserRole(userId: number, role: string): Promise<User>;
   
   // Progress methods
   getUserProgress(userId: number): Promise<UserProgress | undefined>;
@@ -53,15 +55,36 @@ export interface IStorage {
   getRoadmaps(): Promise<Roadmap[]>;
   getRoadmap(id: number): Promise<Roadmap>;
   getUserRoadmap(userId: number): Promise<Roadmap | undefined>;
+  createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap>;
+  updateRoadmap(id: number, roadmap: Partial<InsertRoadmap>): Promise<Roadmap>;
   
   // Module methods
   getModulesByRoadmap(roadmapId: number): Promise<Module[]>;
   getCurrentModule(userId: number): Promise<Module | undefined>;
+  createModule(module: InsertModule): Promise<Module>;
+  updateModule(id: number, module: Partial<InsertModule>): Promise<Module>;
   
   // Lesson methods
   getLessonsByModule(moduleId: number): Promise<Lesson[]>;
+  getLesson(id: number): Promise<Lesson>;
   getLessonProgress(userId: number, lessonId: number): Promise<LessonProgress | undefined>;
   updateLessonProgress(progress: InsertLessonProgress): Promise<LessonProgress>;
+  createLesson(lesson: InsertLesson): Promise<Lesson>;
+  updateLesson(id: number, lesson: Partial<InsertLesson>): Promise<Lesson>;
+  
+  // Resource methods
+  getResources(): Promise<Resource[]>;
+  getResource(id: number): Promise<Resource>;
+  getResourcesByCreator(creatorId: number): Promise<Resource[]>;
+  createResource(resource: InsertResource): Promise<Resource>;
+  updateResource(id: number, resource: Partial<InsertResource>): Promise<Resource>;
+  deleteResource(id: number): Promise<void>;
+  
+  // Lesson Resource methods
+  getLessonResources(lessonId: number): Promise<(LessonResource & { resource: Resource })[]>;
+  addResourceToLesson(lessonResource: InsertLessonResource): Promise<LessonResource>;
+  removeResourceFromLesson(lessonId: number, resourceId: number): Promise<void>;
+  updateLessonResourceOrder(id: number, order: number): Promise<LessonResource>;
   
   // Achievement methods
   getUserAchievements(userId: number): Promise<(UserAchievement & { achievement: Achievement })[]>;
