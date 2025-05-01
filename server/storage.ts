@@ -30,7 +30,11 @@ import {
   Reply,
   InsertReply,
   LessonProgress,
-  InsertLessonProgress
+  InsertLessonProgress,
+  Resource,
+  InsertResource,
+  LessonResource,
+  InsertLessonResource
 } from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
@@ -159,6 +163,21 @@ class DatabaseStorage implements IStorage {
     return newUser;
   }
   
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.query.users.findMany({
+      where: eq(schema.users.role, role),
+    });
+  }
+  
+  async updateUserRole(userId: number, role: string): Promise<User> {
+    const [updatedUser] = await db.update(schema.users)
+      .set({ role })
+      .where(eq(schema.users.id, userId))
+      .returning();
+      
+    return updatedUser;
+  }
+  
   // Progress methods
   async getUserProgress(userId: number): Promise<UserProgress | undefined> {
     return await db.query.userProgress.findFirst({
@@ -221,6 +240,23 @@ class DatabaseStorage implements IStorage {
     return userRoadmap?.roadmap;
   }
   
+  async createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap> {
+    const [newRoadmap] = await db.insert(schema.roadmaps)
+      .values(roadmap)
+      .returning();
+      
+    return newRoadmap;
+  }
+  
+  async updateRoadmap(id: number, roadmap: Partial<InsertRoadmap>): Promise<Roadmap> {
+    const [updatedRoadmap] = await db.update(schema.roadmaps)
+      .set(roadmap)
+      .where(eq(schema.roadmaps.id, id))
+      .returning();
+      
+    return updatedRoadmap;
+  }
+  
   // Module methods
   async getModulesByRoadmap(roadmapId: number): Promise<Module[]> {
     return await db.query.modules.findMany({
@@ -243,12 +279,58 @@ class DatabaseStorage implements IStorage {
     });
   }
   
+  async createModule(module: InsertModule): Promise<Module> {
+    const [newModule] = await db.insert(schema.modules)
+      .values(module)
+      .returning();
+      
+    return newModule;
+  }
+  
+  async updateModule(id: number, module: Partial<InsertModule>): Promise<Module> {
+    const [updatedModule] = await db.update(schema.modules)
+      .set(module)
+      .where(eq(schema.modules.id, id))
+      .returning();
+      
+    return updatedModule;
+  }
+  
   // Lesson methods
   async getLessonsByModule(moduleId: number): Promise<Lesson[]> {
     return await db.query.lessons.findMany({
       where: eq(schema.lessons.moduleId, moduleId),
       orderBy: (lessons, { asc }) => [asc(lessons.order)]
     });
+  }
+  
+  async getLesson(id: number): Promise<Lesson> {
+    const lesson = await db.query.lessons.findFirst({
+      where: eq(schema.lessons.id, id),
+    });
+    
+    if (!lesson) {
+      throw new Error(`Lesson with id ${id} not found`);
+    }
+    
+    return lesson;
+  }
+  
+  async createLesson(lesson: InsertLesson): Promise<Lesson> {
+    const [newLesson] = await db.insert(schema.lessons)
+      .values(lesson)
+      .returning();
+      
+    return newLesson;
+  }
+  
+  async updateLesson(id: number, lesson: Partial<InsertLesson>): Promise<Lesson> {
+    const [updatedLesson] = await db.update(schema.lessons)
+      .set(lesson)
+      .where(eq(schema.lessons.id, id))
+      .returning();
+      
+    return updatedLesson;
   }
   
   async getLessonProgress(userId: number, lessonId: number): Promise<LessonProgress | undefined> {
@@ -409,11 +491,123 @@ class DatabaseStorage implements IStorage {
       await db.insert(schema.postLikes)
         .values({ userId, postId });
         
-      // Increment post likes count
-      await db.update(schema.posts)
-        .set({ likes: (posts) => `${posts.likes} + 1` })
-        .where(eq(schema.posts.id, postId));
+      // Get the current post to get the likes count
+      const post = await db.query.posts.findFirst({
+        where: eq(schema.posts.id, postId)
+      });
+      
+      if (post) {
+        // Increment post likes count
+        await db.update(schema.posts)
+          .set({ likes: post.likes + 1 })
+          .where(eq(schema.posts.id, postId));
+      }
     }
+  }
+  
+  // Resource methods
+  async getResources(): Promise<Resource[]> {
+    return await db.query.resources.findMany({
+      with: {
+        creator: true
+      },
+      orderBy: (resources, { desc }) => [desc(resources.createdAt)]
+    });
+  }
+  
+  async getResource(id: number): Promise<Resource> {
+    const resource = await db.query.resources.findFirst({
+      where: eq(schema.resources.id, id),
+      with: {
+        creator: true
+      }
+    });
+    
+    if (!resource) {
+      throw new Error(`Resource with id ${id} not found`);
+    }
+    
+    return resource;
+  }
+  
+  async getResourcesByCreator(creatorId: number): Promise<Resource[]> {
+    return await db.query.resources.findMany({
+      where: eq(schema.resources.creatorId, creatorId),
+      orderBy: (resources, { desc }) => [desc(resources.createdAt)]
+    });
+  }
+  
+  async createResource(resource: InsertResource): Promise<Resource> {
+    const [newResource] = await db.insert(schema.resources)
+      .values({
+        ...resource,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+      
+    return newResource;
+  }
+  
+  async updateResource(id: number, resource: Partial<InsertResource>): Promise<Resource> {
+    const [updatedResource] = await db.update(schema.resources)
+      .set({
+        ...resource,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.resources.id, id))
+      .returning();
+      
+    return updatedResource;
+  }
+  
+  async deleteResource(id: number): Promise<void> {
+    // First, remove any lesson-resource associations
+    await db.delete(schema.lessonResources)
+      .where(eq(schema.lessonResources.resourceId, id));
+      
+    // Then delete the resource
+    await db.delete(schema.resources)
+      .where(eq(schema.resources.id, id));
+  }
+  
+  // Lesson Resource methods
+  async getLessonResources(lessonId: number): Promise<(LessonResource & { resource: Resource })[]> {
+    return await db.query.lessonResources.findMany({
+      where: eq(schema.lessonResources.lessonId, lessonId),
+      with: {
+        resource: true
+      },
+      orderBy: (lessonResources, { asc }) => [asc(lessonResources.order)]
+    });
+  }
+  
+  async addResourceToLesson(lessonResource: InsertLessonResource): Promise<LessonResource> {
+    const [newLessonResource] = await db.insert(schema.lessonResources)
+      .values({
+        ...lessonResource,
+        createdAt: new Date()
+      })
+      .returning();
+      
+    return newLessonResource;
+  }
+  
+  async removeResourceFromLesson(lessonId: number, resourceId: number): Promise<void> {
+    await db.delete(schema.lessonResources)
+      .where((fields, { and, eq }) => and(
+        eq(fields.lessonId, lessonId),
+        eq(fields.resourceId, resourceId)
+      ));
+  }
+  
+  async updateLessonResourceOrder(id: number, order: number): Promise<LessonResource> {
+    const [updatedLessonResource] = await db.update(schema.lessonResources)
+      .set({ order })
+      .where(eq(schema.lessonResources.id, id))
+      .returning();
+      
+    return updatedLessonResource;
   }
 }
 

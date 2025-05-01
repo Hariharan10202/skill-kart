@@ -7,6 +7,28 @@ import { format, differenceInDays } from "date-fns";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // Middleware to check if user is a curator or admin
+  const isCuratorOrAdmin = (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    if (req.user.role === 'curator' || req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ message: "Forbidden: You must be a curator or admin to perform this action" });
+    }
+  };
+  
+  // Middleware to check if user is admin
+  const isAdmin = (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    if (req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ message: "Forbidden: You must be an admin to perform this action" });
+    }
+  };
 
   // User progress routes
   app.get("/api/user/progress", async (req, res) => {
