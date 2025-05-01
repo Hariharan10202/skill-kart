@@ -37,6 +37,11 @@ export default function Navbar() {
             <Link href="/profile" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
               Profile
             </Link>
+            {(user.role === 'curator' || user.role === 'admin') && (
+              <Link href="/resources" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+                Resources
+              </Link>
+            )}
           </nav>
         )}
         

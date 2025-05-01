@@ -6,6 +6,7 @@ import Roadmap from "@/pages/roadmap";
 import Community from "@/pages/community";
 import Profile from "@/pages/profile";
 import AuthPage from "@/pages/auth-page";
+import ResourceManagement from "@/pages/resource-management";
 import { ProtectedRoute } from "@/lib/protected-route";
 import Navbar from "@/components/nav/navbar";
 import MobileNav from "@/components/nav/mobile-nav";
@@ -19,6 +20,7 @@ function Router() {
       <ProtectedRoute path="/roadmap" component={Roadmap} />
       <ProtectedRoute path="/community" component={Community} />
       <ProtectedRoute path="/profile" component={Profile} />
+      <ProtectedRoute path="/resources" component={ResourceManagement} />
       <Route component={NotFound} />
     </Switch>
   );

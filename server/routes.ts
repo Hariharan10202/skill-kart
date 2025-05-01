@@ -327,6 +327,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resource management routes (for curators and admins)
+  app.get("/api/resources", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const resources = await storage.getResources();
+      res.json({ resources });
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const id = parseInt(req.params.id);
+      const resource = await storage.getResource(id);
+      res.json({ resource });
+    } catch (error) {
+      console.error("Error fetching resource:", error);
+      if (error.message && error.message.includes('not found')) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  });
+  
+  app.get("/api/resources/creator/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const creatorId = parseInt(req.params.id);
+      const resources = await storage.getResourcesByCreator(creatorId);
+      res.json({ resources });
+    } catch (error) {
+      console.error("Error fetching creator resources:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/resources", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const resource = req.body;
+      resource.creatorId = req.user!.id;
+      
+      // Validate required fields
+      if (!resource.title || !resource.type) {
+        return res.status(400).json({ message: "Title and type are required" });
+      }
+      
+      const newResource = await storage.createResource(resource);
+      res.status(201).json({ resource: newResource });
+    } catch (error) {
+      console.error("Error creating resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.put("/api/resources/:id", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resource = await storage.getResource(id);
+      
+      // Check if the resource exists
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      // Check if the user is the creator of the resource or an admin
+      if (resource.creatorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You don't have permission to update this resource" });
+      }
+      
+      const updatedResource = await storage.updateResource(id, req.body);
+      res.json({ resource: updatedResource });
+    } catch (error) {
+      console.error("Error updating resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/resources/:id", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resource = await storage.getResource(id);
+      
+      // Check if the resource exists
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      // Check if the user is the creator of the resource or an admin
+      if (resource.creatorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You don't have permission to delete this resource" });
+      }
+      
+      await storage.deleteResource(id);
+      res.json({ message: "Resource deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Lesson resource management
+  app.get("/api/lessons/:id/resources", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const lessonId = parseInt(req.params.id);
+      const lessonResources = await storage.getLessonResources(lessonId);
+      res.json({ resources: lessonResources });
+    } catch (error) {
+      console.error("Error fetching lesson resources:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/lessons/:id/resources", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.id);
+      const { resourceId, isPrimary, order } = req.body;
+      
+      if (!resourceId) {
+        return res.status(400).json({ message: "Resource ID is required" });
+      }
+      
+      const lessonResource = await storage.addResourceToLesson({
+        lessonId,
+        resourceId,
+        isPrimary: isPrimary || false,
+        order: order || 0
+      });
+      
+      res.status(201).json({ lessonResource });
+    } catch (error) {
+      console.error("Error adding resource to lesson:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/lessons/:lessonId/resources/:resourceId", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const lessonId = parseInt(req.params.lessonId);
+      const resourceId = parseInt(req.params.resourceId);
+      
+      await storage.removeResourceFromLesson(lessonId, resourceId);
+      res.json({ message: "Resource removed from lesson successfully" });
+    } catch (error) {
+      console.error("Error removing resource from lesson:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.put("/api/lessons/resources/:id/order", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { order } = req.body;
+      
+      if (typeof order !== 'number') {
+        return res.status(400).json({ message: "Order must be a number" });
+      }
+      
+      const updatedLessonResource = await storage.updateLessonResourceOrder(id, order);
+      res.json({ lessonResource: updatedLessonResource });
+    } catch (error) {
+      console.error("Error updating lesson resource order:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // User role management (admin only)
+  app.get("/api/users/role/:role", isAdmin, async (req, res) => {
+    try {
+      const role = req.params.role;
+      if (!['learner', 'curator', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      const users = await storage.getUsersByRole(role);
+      res.json({ users });
+    } catch (error) {
+      console.error("Error fetching users by role:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.put("/api/users/:id/role", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { role } = req.body;
+      
+      if (!role || !['learner', 'curator', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      const updatedUser = await storage.updateUserRole(userId, role);
+      res.json({ user: updatedUser });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // Community posts routes
   app.get("/api/community/posts", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
