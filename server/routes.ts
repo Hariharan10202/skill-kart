@@ -327,6 +327,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all modules with lessons (for resource assignment by curators/admins)
+  app.get("/api/modules/with-lessons", isCuratorOrAdmin, async (req, res) => {
+    try {
+      const roadmaps = await storage.getRoadmaps();
+      const allModules = [];
+      
+      // Get all modules from all roadmaps
+      for (const roadmap of roadmaps) {
+        const modules = await storage.getModulesByRoadmap(roadmap.id);
+        allModules.push(...modules);
+      }
+      
+      // Fetch lessons for each module
+      const modulesWithLessons = await Promise.all(
+        allModules.map(async (module) => {
+          const lessons = await storage.getLessonsByModule(module.id);
+          return {
+            ...module,
+            lessons,
+          };
+        })
+      );
+      
+      res.json({ modules: modulesWithLessons });
+    } catch (error) {
+      console.error("Error fetching modules with lessons:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Resource management routes (for curators and admins)
   app.get("/api/resources", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });

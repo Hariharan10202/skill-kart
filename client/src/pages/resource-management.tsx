@@ -232,6 +232,7 @@ export default function ResourceManagement() {
         <TabsList className="mb-4">
           <TabsTrigger value="all">All Resources</TabsTrigger>
           <TabsTrigger value="mine">My Resources</TabsTrigger>
+          <TabsTrigger value="assign">Assign Resources</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
@@ -280,6 +281,13 @@ export default function ResourceManagement() {
               <p className="text-muted-foreground">You haven't created any resources yet.</p>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="assign">
+          <ResourceAssignment 
+            resources={resources || []} 
+            isLoading={isLoading}
+          />
         </TabsContent>
       </Tabs>
 
@@ -539,4 +547,288 @@ function getResourceIcon(type: string) {
     default:
       return <FileText className="h-5 w-5" />;
   }
+}
+
+// Resource Assignment Feature
+interface Module {
+  id: number;
+  title: string;
+  description: string | null;
+  lessons: Lesson[];
+}
+
+interface Lesson {
+  id: number;
+  title: string;
+  moduleId: number;
+}
+
+interface ResourceAssignmentProps {
+  resources: Resource[];
+  isLoading: boolean;
+}
+
+function ResourceAssignment({ resources, isLoading }: ResourceAssignmentProps) {
+  const { toast } = useToast();
+  const [selectedModule, setSelectedModule] = useState<number | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<number | null>(null);
+  const [selectedResource, setSelectedResource] = useState<number | null>(null);
+  const [isPrimary, setIsPrimary] = useState(false);
+
+  // Query to get all modules with their lessons
+  const { data: modules, isLoading: isLoadingModules } = useQuery({
+    queryKey: ['/api/modules/with-lessons'],
+    queryFn: async () => {
+      const res = await fetch('/api/modules/with-lessons');
+      if (!res.ok) throw new Error('Failed to fetch modules');
+      const data = await res.json();
+      return data.modules as Module[];
+    }
+  });
+
+  // Query to get lesson resources for the selected lesson
+  const { data: lessonResources, isLoading: isLoadingLessonResources } = useQuery({
+    queryKey: ['/api/lessons', selectedLesson, 'resources'],
+    queryFn: async () => {
+      if (!selectedLesson) return [];
+      const res = await fetch(`/api/lessons/${selectedLesson}/resources`);
+      if (!res.ok) throw new Error('Failed to fetch lesson resources');
+      const data = await res.json();
+      return data.resources || [];
+    },
+    enabled: !!selectedLesson
+  });
+
+  // Mutation to assign a resource to a lesson
+  const assignResourceMutation = useMutation({
+    mutationFn: async ({ lessonId, resourceId, isPrimary }: { lessonId: number, resourceId: number, isPrimary: boolean }) => {
+      const res = await apiRequest('POST', `/api/lessons/${lessonId}/resources`, {
+        resourceId,
+        isPrimary,
+        order: 0
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Resource assigned",
+        description: "Resource has been assigned to the lesson successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/lessons', selectedLesson, 'resources'] });
+      setSelectedResource(null);
+      setIsPrimary(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to assign resource",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Mutation to remove a resource from a lesson
+  const removeResourceMutation = useMutation({
+    mutationFn: async ({ lessonId, resourceId }: { lessonId: number, resourceId: number }) => {
+      const res = await apiRequest('DELETE', `/api/lessons/${lessonId}/resources/${resourceId}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Resource removed",
+        description: "Resource has been removed from the lesson successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/lessons', selectedLesson, 'resources'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to remove resource",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleModuleChange = (moduleId: string) => {
+    setSelectedModule(parseInt(moduleId));
+    setSelectedLesson(null);
+  };
+
+  const handleLessonChange = (lessonId: string) => {
+    setSelectedLesson(parseInt(lessonId));
+  };
+
+  const handleResourceChange = (resourceId: string) => {
+    setSelectedResource(parseInt(resourceId));
+  };
+
+  const handleAssign = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedLesson && selectedResource) {
+      assignResourceMutation.mutate({
+        lessonId: selectedLesson,
+        resourceId: selectedResource,
+        isPrimary
+      });
+    }
+  };
+
+  const handleRemoveResource = (resourceId: number) => {
+    if (selectedLesson) {
+      if (confirm("Are you sure you want to remove this resource from the lesson?")) {
+        removeResourceMutation.mutate({
+          lessonId: selectedLesson,
+          resourceId
+        });
+      }
+    }
+  };
+
+  // Find the currently selected module object
+  const currentModule = modules?.find(m => m.id === selectedModule);
+  
+  return (
+    <div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Assign Resources to Lessons</CardTitle>
+          <CardDescription>
+            Select a module and lesson, then assign resources to it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingModules ? (
+            <div className="flex justify-center items-center h-24">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="module">Module</Label>
+                  <Select
+                    value={selectedModule?.toString() || ""}
+                    onValueChange={handleModuleChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a module" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modules?.map(module => (
+                        <SelectItem key={module.id} value={module.id.toString()}>
+                          {module.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="lesson">Lesson</Label>
+                  <Select
+                    value={selectedLesson?.toString() || ""}
+                    onValueChange={handleLessonChange}
+                    disabled={!selectedModule}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a lesson" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentModule?.lessons?.map(lesson => (
+                        <SelectItem key={lesson.id} value={lesson.id.toString()}>
+                          {lesson.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {selectedLesson && (
+                <>
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-medium mb-2">Assigned Resources</h3>
+                    {isLoadingLessonResources ? (
+                      <div className="flex justify-center items-center h-24">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : lessonResources && lessonResources.length > 0 ? (
+                      <div className="space-y-2">
+                        {lessonResources.map((lr: any) => (
+                          <div key={lr.id} className="p-3 border rounded-md flex justify-between items-center">
+                            <div className="flex items-center">
+                              <div className="mr-2 bg-primary/10 p-2 rounded-md">
+                                {getResourceIcon(lr.resource.type)}
+                              </div>
+                              <div>
+                                <p className="font-medium">{lr.resource.title}</p>
+                                <p className="text-sm text-muted-foreground">{lr.resource.type}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {lr.isPrimary && (
+                                <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">
+                                  Primary
+                                </span>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleRemoveResource(lr.resourceId)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No resources assigned to this lesson.</p>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-medium mb-2">Assign New Resource</h3>
+                    <form onSubmit={handleAssign} className="space-y-4">
+                      <div>
+                        <Label htmlFor="resource">Resource</Label>
+                        <Select
+                          value={selectedResource?.toString() || ""}
+                          onValueChange={handleResourceChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a resource" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {resources?.map(resource => (
+                              <SelectItem key={resource.id} value={resource.id.toString()}>
+                                {resource.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="is-primary" 
+                          checked={isPrimary}
+                          onCheckedChange={(checked) => setIsPrimary(checked === true)}
+                        />
+                        <Label htmlFor="is-primary">Set as primary resource</Label>
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={!selectedResource || assignResourceMutation.isPending}
+                      >
+                        {assignResourceMutation.isPending ? 'Assigning...' : 'Assign Resource'}
+                      </Button>
+                    </form>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
