@@ -16,41 +16,45 @@ export default function MobileNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-950 border-t dark:border-gray-800 px-6 py-2">
       <div className="flex justify-around">
-        <Link href="/dashboard">
-          <a className={cn(
+        <Link 
+          href="/dashboard"
+          className={cn(
             "flex flex-col items-center py-2",
             isActive("/dashboard") ? "text-primary" : "text-gray-500 dark:text-gray-400"
-          )}>
-            <HomeIcon className="h-5 w-5" />
-            <span className="text-xs mt-1">Dashboard</span>
-          </a>
+          )}
+        >
+          <HomeIcon className="h-5 w-5" />
+          <span className="text-xs mt-1">Dashboard</span>
         </Link>
-        <Link href="/roadmap">
-          <a className={cn(
+        <Link 
+          href="/roadmap"
+          className={cn(
             "flex flex-col items-center py-2",
             isActive("/roadmap") ? "text-primary" : "text-gray-500 dark:text-gray-400"
-          )}>
-            <MapPin className="h-5 w-5" />
-            <span className="text-xs mt-1">Roadmap</span>
-          </a>
+          )}
+        >
+          <MapPin className="h-5 w-5" />
+          <span className="text-xs mt-1">Roadmap</span>
         </Link>
-        <Link href="/community">
-          <a className={cn(
+        <Link 
+          href="/community"
+          className={cn(
             "flex flex-col items-center py-2",
             isActive("/community") ? "text-primary" : "text-gray-500 dark:text-gray-400"
-          )}>
-            <Users2Icon className="h-5 w-5" />
-            <span className="text-xs mt-1">Community</span>
-          </a>
+          )}
+        >
+          <Users2Icon className="h-5 w-5" />
+          <span className="text-xs mt-1">Community</span>
         </Link>
-        <Link href="/profile">
-          <a className={cn(
+        <Link 
+          href="/profile"
+          className={cn(
             "flex flex-col items-center py-2",
             isActive("/profile") ? "text-primary" : "text-gray-500 dark:text-gray-400"
-          )}>
-            <UserIcon className="h-5 w-5" />
-            <span className="text-xs mt-1">Profile</span>
-          </a>
+          )}
+        >
+          <UserIcon className="h-5 w-5" />
+          <span className="text-xs mt-1">Profile</span>
         </Link>
       </div>
     </nav>

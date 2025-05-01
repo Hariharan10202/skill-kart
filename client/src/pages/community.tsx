@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +55,7 @@ export default function Community() {
   const [activePostId, setActivePostId] = useState<number | null>(null);
   const [showReplies, setShowReplies] = useState<Record<number, boolean>>({});
   
-  const { data: communityData } = useQuery({
+  const { data: communityData } = useQuery<{ posts: CommunityPost[] }>({
     queryKey: ['/api/community/posts'],
     queryFn: getQueryFn({ on401: "throw" }),
   });

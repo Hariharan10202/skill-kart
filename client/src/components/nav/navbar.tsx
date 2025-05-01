@@ -25,25 +25,17 @@ export default function Navbar() {
         
         {!isMobile && (
           <nav className="flex items-center gap-6">
-            <Link href="/dashboard">
-              <a className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                Dashboard
-              </a>
+            <Link href="/dashboard" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              Dashboard
             </Link>
-            <Link href="/roadmap">
-              <a className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                My Roadmap
-              </a>
+            <Link href="/roadmap" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              My Roadmap
             </Link>
-            <Link href="/community">
-              <a className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                Community
-              </a>
+            <Link href="/community" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              Community
             </Link>
-            <Link href="/profile">
-              <a className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                Profile
-              </a>
+            <Link href="/profile" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              Profile
             </Link>
           </nav>
         )}
