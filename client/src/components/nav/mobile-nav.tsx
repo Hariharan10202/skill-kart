@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/use-auth";
-import { HomeIcon, MapPin, Users2Icon, UserIcon } from "lucide-react";
+import { HomeIcon, MapPin, Users2Icon, UserIcon, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MobileNav() {
@@ -46,6 +46,18 @@ export default function MobileNav() {
           <Users2Icon className="h-5 w-5" />
           <span className="text-xs mt-1">Community</span>
         </Link>
+        {(user.role === 'curator' || user.role === 'admin') && (
+          <Link 
+            href="/resources"
+            className={cn(
+              "flex flex-col items-center py-2",
+              isActive("/resources") ? "text-primary" : "text-gray-500 dark:text-gray-400"
+            )}
+          >
+            <FileText className="h-5 w-5" />
+            <span className="text-xs mt-1">Resources</span>
+          </Link>
+        )}
         <Link 
           href="/profile"
           className={cn(
