@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -203,20 +204,7 @@ export default function ResourceManagement() {
     );
   }
 
-  const getResourceIcon = (type: string) => {
-    switch (type) {
-      case 'video':
-        return <Video className="h-5 w-5" />;
-      case 'article':
-        return <FileText className="h-5 w-5" />;
-      case 'link':
-        return <LinkIcon className="h-5 w-5" />;
-      case 'file':
-        return <FileUp className="h-5 w-5" />;
-      default:
-        return <FileText className="h-5 w-5" />;
-    }
-  };
+  // Using the standalone getResourceIcon function defined below
 
   return (
     <div className="container mx-auto px-4 py-8">
